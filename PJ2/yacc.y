@@ -53,8 +53,9 @@ void yyerror(string msg)
 %token <s_val> ID
 /* type  */
 %type <valueType> DATA_TYPE FUNC_TYPE
-%type <idType> ARGS ARG method methods
-%type <value> VALUE EXPR 
+%type <idType> ARGS ARG method methods 
+%type <idType> FUNC_BLOCK
+%type <value> VALUE EXPR FUNC_INVOCATION
 /* precedence  */
 %left OR 
 %left AND
@@ -89,7 +90,7 @@ const_dec:	VAL ID '=' EXPR //val a = 10
 				put->idType = Const;
 				put->idValue = $4; 
 				InsertSymbol(put,all_table.table_list[table_index]);
-				Trace("insert id");
+				Trace("insert id val & value");
 			}
 		}|
 		VAL ID ':' DATA_TYPE '=' EXPR//val a:int = 10
@@ -109,7 +110,7 @@ const_dec:	VAL ID '=' EXPR //val a = 10
 				put->idType = Const;
 				put->idValue = $6; 
 				InsertSymbol(put,all_table.table_list[table_index]);
-				Trace("insert id");
+				Trace("insert id val & type & value");
 			}
 		};
 //var declaration
@@ -126,7 +127,7 @@ var_dec:	VAR ID//var a
 				put->idName = *$2;
 				put->idType = Var; 
 				InsertSymbol(put,all_table.table_list[table_index]);
-				Trace("insert id");
+				Trace("insert id var");
 			}
 		}|
 		VAR ID ':' DATA_TYPE//var a:int
@@ -144,7 +145,7 @@ var_dec:	VAR ID//var a
 				put->idValue = new Value;
 				put->idValue->valueType = $4;
 				InsertSymbol(put,all_table.table_list[table_index]);
-				Trace("insert id");
+				Trace("insert id var & type");
 			}
 		}|
 		VAR ID '=' EXPR//var a = 3
@@ -161,7 +162,7 @@ var_dec:	VAR ID//var a
 				put->idType = Var; 
 				put->idValue = $4;
 				InsertSymbol(put,all_table.table_list[table_index]);
-				Trace("insert id");
+				Trace("insert id va & value");
 			}
 		}|
 		VAR ID ':' DATA_TYPE '=' EXPR//var a:int = 3
@@ -181,7 +182,7 @@ var_dec:	VAR ID//var a
 					put->idType = Var;
 					put->idValue = $6; 
 					InsertSymbol(put,all_table.table_list[table_index]);
-					Trace("insert id");
+					Trace("insert id var & type & value");
 				}
 			}
 		}|
@@ -208,7 +209,7 @@ var_dec:	VAR ID//var a
         				put->arrayValue.push_back(new Value);
     				}
 				InsertSymbol(put,all_table.table_list[table_index]);
-				Trace("insert id");
+				Trace("insert id(array)");
 			}
 
 			
@@ -216,8 +217,26 @@ var_dec:	VAR ID//var a
 		;
 EXPR:		'(' EXPR ')'{
 			$$=$2;
+		}|EXPR '=' EXPR {
+			Trace("EXPR = EXPR");
+			Value* put =new Value;
+			if($1->valueType==intType && $3->valueType==intType){
+           			put->valueType = intType;
+            			put->i_value = ($1->i_value + $3->i_value);
+        		}else if($1->valueType==intType && $3->valueType==floatType){
+           			put->valueType = floatType;
+            			put->f_value = ((float)$1->i_value + $3->f_value);
+        		}else if($1->valueType==floatType && $3->valueType==intType){
+           			put->valueType = floatType;
+            			put->f_value = ($1->f_value + (float)$3->i_value);
+        		}else if($1->valueType==floatType && $3->valueType==floatType){
+           			put->valueType = floatType;
+            			put->f_value = ($1->f_value + $3->f_value);
+        		}else
+				{yyerror("assign type error");}
+			$$=put;
 		}|FUNC_INVOCATION {
-			//not yet
+			Trace("into call function");
 		}|EXPR '+' EXPR {
 			Trace("EXPR + EXPR");
 			Value* put =new Value;
@@ -556,7 +575,7 @@ VALUE:		INT_VALUE {
 
 FUNC_TYPE:	':' DATA_TYPE{
 			$$ = $2;
-		};
+		}|/*empty*/;
 DATA_TYPE:	CHAR {
            	 	$$ = charType;
        	  	}
@@ -572,35 +591,38 @@ DATA_TYPE:	CHAR {
          	| FLOAT {
             		$$ = floatType;
          	};
-// not yet
-zero_or_more_state: ;
+zero_or_more_state: 	STATEMENTS
+			|/*empty*/
+			;
 methods :	methods method
 		|method;
 method	:	DEF ID {
 			Trace("Method ID");
 			int exist = all_table.table_list[table_index].lookup(*$2);
-			if(exist !=-1){
+			if(exist !=-1&&all_table.table_list[table_index].idList[exist]->idType==Function){
 				Trace("method id already exist");
 			}
-		}'(' ARGS ')' BLOCK{
+		} FUNC_BLOCK {
+			Trace("done FUNC_BLOCK");
+			Identifier* put = $4;
+			put->idName = *$2;
+			put->idType = Function;
+			InsertSymbol(put,all_table.table_list[table_index]);
+		};
+
+FUNC_BLOCK:	'(' {
+			Trace("FUNC_BLOCK start");
+			SymbolTable put = SymbolTable();
+			table_index++;
+			all_table.push();
+		} ARGS ')' FUNC_TYPE '{' declarations zero_or_more_state '}'{
+			//cout<<"$3="<<$3<<endl;
+			$$=$3;
+			Trace("FUNC_BLOCK end");
 			
-			//Identifier* put = $4;//args assign to ID
-			//put->idName = *$2;
-			//InsertSymbol(put,all_table.table_list[table_index]);
-			//Trace("insert  method id");
-			//$$ = put;
-		}|DEF ID {
-			Trace("Method ID with type");
-			int exist = all_table.table_list[table_index].lookup(*$2);
-			if(exist !=-1){
-				Trace("method id already exist");
-			}
-		}'(' ARGS ')' BLOCK FUNC_TYPE{
-			//Identifier* put = $4;//args assign to ID
-			//put->idName = *$2;
-			//put->funType = $7;
-			//InsertSymbol(put,all_table.table_list[table_index]);
-			//Trace("insert  method id");
+			all_table.table_list[table_index].dump();
+			all_table.pop();
+			table_index--;
 		};
 //a:int,b:int
 ARGS:		ARG{
@@ -613,25 +635,74 @@ ARGS:		ARG{
 			Identifier* put = $1;
 			put->parameters.push_back($3);
 			put->numOfPara++;
-			$$=put;
-		}|/* empty*/
-		;
+			$1=put;
+		}|/* empty*/ {
+			Identifier* put =new Identifier;
+			put->idType = Function;
+			$$ = put;
+		};
 ARG:		ID ':' DATA_TYPE{
 			Identifier* put = new Identifier;
 			put->idName = *$1;
 			put->idValue = new Value;
-			put->idType = Function;
+			put->idType = Var;
 			put->idValue->valueType = $3;
 			InsertSymbol(put,all_table.table_list[table_index]);
-			Trace("insert id");
+			Trace("insert id(argument)");
+			$$=put;
+		}|ID{
+			Trace("arg = id");
+			int exist = all_table.lookup_all(*$1);
+			if(exist ==-1)
+				yyerror("arg not exist");
+			else 
+			{	
+				int pos = all_table.table_list[exist].lookup(*$1);
+				Identifier* put = all_table.table_list[exist].idList[pos];
+				$$=put;
+			}
+		}
+		|VALUE{
+			Trace("arg = value");
+			Identifier* put = new Identifier;
+			put->idValue=$1;
+			$$=put;
 		};
-FUNC_INVOCATION:;
+FUNC_INVOCATION:	ID {
+				Trace("start call function");
+			}'(' ARGS ')'{
+				Trace("call function done");
+				int exist = all_table.lookup_all(*$1);
+				if(exist ==-1)
+					yyerror("function not exist");
+				else //insert id
+				{	
+					int pos = all_table.table_list[exist].lookup(*$1);
+					Identifier* put = all_table.table_list[exist].idList[pos];
+					if(put->idType!=Function){
+						yyerror("type must be function");
+					}else{
+						if(put->numOfPara!=$4->numOfPara)
+						{
+							yyerror("argument number must be the same");
+						}
+						else{
+							for(int i=0;i<put->numOfPara;i++){
+								if(put->parameters[i]->idValue->valueType!=$4->parameters[i]->idValue->valueType){
+									yyerror("argument type error");
+								}
+							}
+						}
+					}
+				}
+			};
 STATEMENTS:	STATEMENT STATEMENTS
+		|STATEMENT
 		|/*empty*/
 		;
 STATEMENT:	SIMPLE
-		|CONDITION
-		|LOOP;
+		|CONDITION{Trace("exit Condition");}
+		|LOOP{Trace("into Loop");};
 BLOCK:		'{' {
 			Trace("BLOCK start");
 			SymbolTable put = SymbolTable();
@@ -646,10 +717,12 @@ BLOCK:		'{' {
 CONDITION: 	IF_CONDITION
 		|IF_CONDITION ELSE_CONDITION;
 
-IF_CONDITION:	IF '(' EXPR ')' SIMPLE{
-			Trace("IF with simple");
-		}|IF '(' EXPR ')' BLOCK{
-			Trace("IF with block");
+IF_CONDITION:	IF '(' EXPR ')' {
+			Trace("IF condition");
+		}SIMPLE{
+			Trace("if with simple");
+		}|BLOCK{
+			Trace("if with block");
 		};
 ELSE_CONDITION:	ELSE SIMPLE{
 			Trace("else with simple");
@@ -714,9 +787,9 @@ SIMPLE: 	ID '=' EXPR{
 				}
 				
 			}
-		}|PRINT '(' EXPR ')'{
+		}|PRINT  EXPR {
 			Trace("print expr");
-		}|PRINTLN '(' EXPR ')'{
+		}|PRINTLN  EXPR {
 			Trace("println expr");
 		}|READ ID{
 			Trace("read id");
