@@ -1,0 +1,72 @@
+ce(t)        printf(t)
+%}
+
+/* tokens */
+%token SEMICOLON
+%token BOOLEAN
+%token BREAK
+%token CHAR
+%token CASE
+%token CLASS
+%token CONTINUE
+%token DEF
+%token DO
+%token ELSE
+%token EXIT
+%token FALSE
+%token FLOAT
+%token FOR
+%token IF
+%token INT
+%token NULL
+%token OBJECT
+%token PRINT
+%token PRINTLN
+%token READ
+%token REPEAT
+%token RETURN
+%token STRING
+%token TO
+%token TRUE
+%token TYPE
+%token VAL
+%token VAR
+%token WHILE
+%token ASSIGN
+
+%%
+program:        identifier semi
+                {
+                Trace("Reducing to program\n");
+                }
+                ;
+
+semi:           SEMICOLON
+                {
+                Trace("Reducing to semi\n");
+                }
+                ;
+%%
+#include "lex.yy.c"
+
+yyerror(msg)
+char *msg;
+{
+    fprintf(stderr, "%s\n", msg);
+}
+
+main()
+{
+    /* open the source program file */
+    if (argc != 2) {
+        printf ("Usage: sc filename\n");
+        exit(1);
+    }
+    yyin = fopen(argv[1], "r");         /* open input file */
+
+    /* perform parsing */
+    if (yyparse() == 1)                 /* parsing */
+        yyerror("Parsing error !");     /* syntax error */
+}
+
+

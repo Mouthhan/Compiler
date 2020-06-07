@@ -1,0 +1,12 @@
+/*Hello World Example */
+object HelloWorld {
+def main ( ) {
+// Print text to the console
+boolean x = true;
+boolean y = false;
+println ("aa""bb""cc");
+println ("aa""bb");
+println ("abc");
+println ("");
+}
+}
