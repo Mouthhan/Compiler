@@ -1057,7 +1057,7 @@ YY_RULE_SETUP
 case 35:
 YY_RULE_SETUP
 #line 106 "lex.l"
-{yylval.b_val = false;token(FALSE);}
+{yylval.b_val = false;token(BOOL_VALUE);}
 	YY_BREAK
 case 36:
 YY_RULE_SETUP
@@ -1122,7 +1122,7 @@ YY_RULE_SETUP
 case 48:
 YY_RULE_SETUP
 #line 132 "lex.l"
-{yylval.b_val = true;token(TRUE);}
+{yylval.b_val = true;token(BOOL_VALUE);}
 	YY_BREAK
 case 49:
 YY_RULE_SETUP

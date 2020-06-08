@@ -79,7 +79,7 @@ typedef struct Identifier {
 	int index;
 	int idType = idTypeError;
 	string idName = "";
-	Value* idValue= NULL;
+	Value* idValue= new Value;
 	vector<Value*> arrayValue;
 	int arraySize =0;
 	int arrayValueType = valueTypeError;
@@ -119,7 +119,15 @@ public:
 		cout<<"--------------Dump Table----------------"<<endl;
 		cout<<"idCount:"<<idList.size()<<endl;
 		for (int i = 0; i < idList.size(); i++) {
-			cout<<"index:"<<i<<"\t\t"<<"name:"<<idList[i]->idName<<"\t\t"<<"type:"<<idType2String(idList[i]->idType)<<endl;
+			cout<<"index:"<<i<<"\t\t";
+			cout<<"name:"<<idList[i]->idName<<"\t\t";
+			cout<<"idtype:"<<idType2String(idList[i]->idType)<<"\t\t";
+			if(idList[i]->idType == Array)
+			{
+				cout<<"valueType:"<<valueType2String(idList[i]->arrayValueType)<<endl;
+			}else{
+				cout<<"valueType:"<<valueType2String(idList[i]->idValue->valueType)<<endl;
+			}
 		}
 	}
 
@@ -160,7 +168,6 @@ public:
 	{
 		if(index>=0)
 		{
-			cout<<"--------------Table:"<<index<<"----------------"	<<endl;
 			table_list[index].dump();
 		}
 	}

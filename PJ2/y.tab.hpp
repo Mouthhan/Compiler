@@ -45,99 +45,101 @@ extern int yydebug;
 # define YYTOKENTYPE
   enum yytokentype
   {
-    SEMICOLON = 258,
-    BOOLEAN = 259,
-    BREAK = 260,
-    CHAR = 261,
-    CASE = 262,
-    CLASS = 263,
-    CONTINUE = 264,
-    DEF = 265,
-    DO = 266,
-    ELSE = 267,
-    EXIT = 268,
-    FALSE = 269,
-    FLOAT = 270,
-    FOR = 271,
-    IF = 272,
-    INT = 273,
-    _NULL = 274,
-    OBJECT = 275,
-    PRINT = 276,
-    PRINTLN = 277,
-    READ = 278,
-    REPEAT = 279,
-    RETURN = 280,
-    STRING = 281,
-    TO = 282,
-    TRUE = 283,
-    TYPE = 284,
-    VAL = 285,
-    VAR = 286,
-    WHILE = 287,
-    INT_VALUE = 288,
-    FLOAT_VALUE = 289,
-    BOOL_VALUE = 290,
-    STRING_VALUE = 291,
-    CHAR_VALUE = 292,
-    ID = 293,
-    OR = 294,
-    AND = 295,
-    LESS = 296,
-    NOT_MORE = 297,
-    NOT_LESS = 298,
-    MORE = 299,
-    NOT_EQUAL = 300,
-    EQUAL = 301,
-    UMINUS = 302
+    OR = 258,
+    AND = 259,
+    EQUAL = 260,
+    LESS = 261,
+    NOT_MORE = 262,
+    NOT_LESS = 263,
+    MORE = 264,
+    NOT_EQUAL = 265,
+    NOT = 266,
+    SEMICOLON = 267,
+    BOOLEAN = 268,
+    BREAK = 269,
+    CHAR = 270,
+    CASE = 271,
+    CLASS = 272,
+    CONTINUE = 273,
+    DEF = 274,
+    DO = 275,
+    ELSE = 276,
+    EXIT = 277,
+    BOOL_FALSE = 278,
+    FLOAT = 279,
+    FOR = 280,
+    IF = 281,
+    INT = 282,
+    _NULL = 283,
+    OBJECT = 284,
+    PRINT = 285,
+    PRINTLN = 286,
+    READ = 287,
+    REPEAT = 288,
+    RETURN = 289,
+    STRING = 290,
+    TO = 291,
+    BOOL_TRUE = 292,
+    TYPE = 293,
+    VAL = 294,
+    VAR = 295,
+    WHILE = 296,
+    INT_VALUE = 297,
+    FLOAT_VALUE = 298,
+    BOOL_VALUE = 299,
+    STRING_VALUE = 300,
+    CHAR_VALUE = 301,
+    ID = 302,
+    UMINUS = 303
   };
 #endif
 /* Tokens.  */
-#define SEMICOLON 258
-#define BOOLEAN 259
-#define BREAK 260
-#define CHAR 261
-#define CASE 262
-#define CLASS 263
-#define CONTINUE 264
-#define DEF 265
-#define DO 266
-#define ELSE 267
-#define EXIT 268
-#define FALSE 269
-#define FLOAT 270
-#define FOR 271
-#define IF 272
-#define INT 273
-#define _NULL 274
-#define OBJECT 275
-#define PRINT 276
-#define PRINTLN 277
-#define READ 278
-#define REPEAT 279
-#define RETURN 280
-#define STRING 281
-#define TO 282
-#define TRUE 283
-#define TYPE 284
-#define VAL 285
-#define VAR 286
-#define WHILE 287
-#define INT_VALUE 288
-#define FLOAT_VALUE 289
-#define BOOL_VALUE 290
-#define STRING_VALUE 291
-#define CHAR_VALUE 292
-#define ID 293
-#define OR 294
-#define AND 295
-#define LESS 296
-#define NOT_MORE 297
-#define NOT_LESS 298
-#define MORE 299
-#define NOT_EQUAL 300
-#define EQUAL 301
-#define UMINUS 302
+#define OR 258
+#define AND 259
+#define EQUAL 260
+#define LESS 261
+#define NOT_MORE 262
+#define NOT_LESS 263
+#define MORE 264
+#define NOT_EQUAL 265
+#define NOT 266
+#define SEMICOLON 267
+#define BOOLEAN 268
+#define BREAK 269
+#define CHAR 270
+#define CASE 271
+#define CLASS 272
+#define CONTINUE 273
+#define DEF 274
+#define DO 275
+#define ELSE 276
+#define EXIT 277
+#define BOOL_FALSE 278
+#define FLOAT 279
+#define FOR 280
+#define IF 281
+#define INT 282
+#define _NULL 283
+#define OBJECT 284
+#define PRINT 285
+#define PRINTLN 286
+#define READ 287
+#define REPEAT 288
+#define RETURN 289
+#define STRING 290
+#define TO 291
+#define BOOL_TRUE 292
+#define TYPE 293
+#define VAL 294
+#define VAR 295
+#define WHILE 296
+#define INT_VALUE 297
+#define FLOAT_VALUE 298
+#define BOOL_VALUE 299
+#define STRING_VALUE 300
+#define CHAR_VALUE 301
+#define ID 302
+#define UMINUS 303
 
 /* Value type.  */
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
@@ -155,7 +157,7 @@ union YYSTYPE
 	Value* value;
 	Identifier* idType;
 
-#line 159 "y.tab.hpp" /* yacc.c:1909  */
+#line 161 "y.tab.hpp" /* yacc.c:1909  */
 };
 
 typedef union YYSTYPE YYSTYPE;

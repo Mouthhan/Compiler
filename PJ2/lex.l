@@ -103,7 +103,7 @@ area_comment_e	"*/"
 
 "exit"	{token(EXIT);}
 
-"false"	{yylval.b_val = false;token(FALSE);}
+"false"	{yylval.b_val = false;token(BOOL_VALUE);}
 
 "float"	{token(FLOAT);}
 
@@ -129,7 +129,7 @@ area_comment_e	"*/"
 
 "to"	{token(TO);}
 
-"true"	{yylval.b_val = true;token(TRUE);}
+"true"	{yylval.b_val = true;token(BOOL_VALUE);}
 
 "type"	{token(TYPE);}
 

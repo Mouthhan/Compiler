@@ -39,15 +39,15 @@ void yyerror(string msg)
 /* operator */
 //%token ADD MINUS PRODUCT DIVIDE MOD ASSIGN
 /* logic  */
-//%token OR AND EQUAL LESS NOT_MORE NOT_LESS MORE NOT_EQUAL NOT
+%token OR AND EQUAL LESS NOT_MORE NOT_LESS MORE NOT_EQUAL NOT
 /* reserve word  */
-%token SEMICOLON BOOLEAN BREAK CHAR CASE CLASS CONTINUE DEF DO ELSE EXIT FALSE FLOAT FOR IF INT _NULL OBJECT PRINT PRINTLN READ REPEAT RETURN STRING TO TRUE TYPE VAL VAR WHILE
+%token SEMICOLON BOOLEAN BREAK CHAR CASE CLASS CONTINUE DEF DO ELSE EXIT BOOL_FALSE FLOAT FOR IF INT _NULL OBJECT PRINT PRINTLN READ REPEAT RETURN STRING TO BOOL_TRUE TYPE VAL VAR WHILE
 /* value get  */
 //%token INTEGER BOOL REAL_NUM ID STR
 
 %token <i_val> INT_VALUE
 %token <f_val> FLOAT_VALUE
-%token <b_val> BOOL_VALUE
+%token <b_val> BOOL_VALUE BOOL_TRUE BOOL_FALSE
 %token <s_val> STRING_VALUE
 %token <c_val> CHAR_VALUE
 %token <s_val> ID
@@ -206,7 +206,9 @@ var_dec:	VAR ID//var a
 				put->arrayValueType = $4;
 				for (int i = 0; i < put->arraySize; i++)
     				{
-        				put->arrayValue.push_back(new Value);
+					Value* tmp = new Value;
+					tmp->valueType = $4;
+        				put->arrayValue.push_back(tmp);
     				}
 				InsertSymbol(put,all_table.table_list[table_index]);
 				Trace("insert id(array)");
@@ -483,6 +485,7 @@ EXPR:		'(' EXPR ')'{
 			Value* put = new Value;
        		 	put->valueType = boolType;
 			if($1->valueType!=$3->valueType){
+				//cout<<"$1Type:"<<$1->valueType<<"$3Type:"<<$3->valueType<<endl;
 				yyerror("!= operator type not equal");
 			}else if($1->valueType==intType&&$3->valueType==intType)
 			{
@@ -546,6 +549,40 @@ EXPR:		'(' EXPR ')'{
 					Trace("assign id array value to expr");
 				}
 			}
+		}|ID '[' ID ']'{
+			Trace("find a Value(id[int])");
+			int exist = all_table.lookup_all(*$1);
+			if(exist ==-1){
+				Trace("id not exist");
+			}
+			else //take id info
+ 			{
+				//a[b]
+				int pos = all_table.table_list[exist].lookup(*$1);
+				Identifier* put = all_table.table_list[exist].idList[pos];//a
+				if(put->idType != Array)
+				{
+					yyerror("expr assign id type must be Array");//b
+				}else
+				{
+					int exist = all_table.lookup_all(*$3);
+					if(exist ==-1){
+						Trace("array index id not exist");
+					}
+					else{
+						int pos = all_table.table_list[exist].lookup(*$3);
+						Identifier* tmp = all_table.table_list[exist].idList[pos];
+						if (tmp->idValue->valueType!=intType){
+							Trace("index must be integer");
+						}
+						else{
+							$$=put->arrayValue[tmp->idValue->i_value];
+							Trace("assign id array value to expr");
+						}
+						
+					}
+				}
+			}
 		}
 		|VALUE{$$=$1;}
 		;
@@ -574,6 +611,7 @@ VALUE:		INT_VALUE {
 //type get ex.int float
 
 FUNC_TYPE:	':' DATA_TYPE{
+			Trace("function has return type");
 			$$ = $2;
 		}|/*empty*/;
 DATA_TYPE:	CHAR {
@@ -661,8 +699,12 @@ ARG:		ID ':' DATA_TYPE{
 				Identifier* put = all_table.table_list[exist].idList[pos];
 				$$=put;
 			}
-		}
-		|VALUE{
+		}|EXPR{
+			Trace("arg = expr");
+			Identifier* put = new Identifier;
+			put->idValue=$1;
+			$$ = put;
+		}|VALUE{
 			Trace("arg = value");
 			Identifier* put = new Identifier;
 			put->idValue=$1;
@@ -673,6 +715,7 @@ FUNC_INVOCATION:	ID {
 			}'(' ARGS ')'{
 				Trace("call function done");
 				int exist = all_table.lookup_all(*$1);
+				cout<<"$1="<<*$1<<endl;
 				if(exist ==-1)
 					yyerror("function not exist");
 				else //insert id
@@ -692,6 +735,8 @@ FUNC_INVOCATION:	ID {
 									yyerror("argument type error");
 								}
 							}
+							
+							$$= put->idValue;
 						}
 					}
 				}
@@ -721,7 +766,9 @@ IF_CONDITION:	IF '(' EXPR ')' {
 			Trace("IF condition");
 		}SIMPLE{
 			Trace("if with simple");
-		}|BLOCK{
+		}|IF '(' EXPR ')' {
+			Trace("IF condition");
+		}BLOCK{
 			Trace("if with block");
 		};
 ELSE_CONDITION:	ELSE SIMPLE{
@@ -767,7 +814,7 @@ SIMPLE: 	ID '=' EXPR{
 				}
 				
 			}
-		}|ID '[' INT_VALUE ']' '=' EXPR{
+		}|ID '[' EXPR ']' '=' EXPR{
 			Trace("assign expr to id array's value");
 			int exist = all_table.lookup_all(*$1);
 			if(exist ==-1)
@@ -782,7 +829,8 @@ SIMPLE: 	ID '=' EXPR{
 				}else if(put->arrayValueType!=$6->valueType){
 					yyerror("type error");
 				}else {
-					put->arrayValue[$3] = $6;
+					//array value assign not yet
+					//put->arrayValue[$3] = $6;
 					Trace("assign to array's value done");
 				}
 				
