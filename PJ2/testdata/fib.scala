@@ -13,7 +13,7 @@ object fib
 
   def main () {
     // compute the nth Fibonacci number
-    while (n > 2) {
+    while (n > 2){
       temp = Fn
       Fn = Fn + FNminus1
       FNminus1 = temp

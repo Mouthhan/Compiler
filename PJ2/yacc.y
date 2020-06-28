@@ -14,7 +14,12 @@ int table_index = 0;
 void InsertSymbol(Identifier* n,SymbolTable &ST);
 ofstream java;
 string funcName = "";
+string objName = "";
 int now_stack = 0;
+int label_count = 0;
+int begin_label = 0;
+int end_label = 0; 
+int else_label = 0;
 string now_class = "";
 bool has_return = false;
 bool const_val = false;
@@ -196,7 +201,9 @@ var_dec:	VAR ID//var a
 				InsertSymbol(put,all_table.table_list[table_index]);
 			}
 		}|
-		VAR ID '=' EXPR//var a = 3
+		VAR ID '=' {
+			const_val = true;
+		}EXPR//var a = 3
 		{
 			Trace("VAR ID=EXPR");
 			int exist = all_table.table_list[table_index].lookup(*$2);
@@ -209,11 +216,11 @@ var_dec:	VAR ID//var a
 				Identifier* put = new Identidier;
 				put->idName = *$2;
 				put->idType = Var; 
-				put->idValue = $4;
+				put->idValue = $5;
 				Trace("insert id va & value");
 				//global
 				if(table_index==0){
-					java<<"\tfield static int "<<*$2<<" = "<<$4->i_value<<endl;
+					java<<"\tfield static int "<<*$2<<endl;
 				}
 				else{
 					put->index = now_stack;
@@ -222,14 +229,17 @@ var_dec:	VAR ID//var a
 				InsertSymbol(put,all_table.table_list[table_index]);
 			}
 		}|
-		VAR ID ':' DATA_TYPE '=' EXPR//var a:int = 3
+		VAR ID ':' DATA_TYPE '=' {
+			const_val = true;
+		}EXPR//var a:int = 3
 		{
+
 			Trace("VAL ID :TYPE = EXPR");
 			int exist = all_table.table_list[table_index].lookup(*$2);
 			if(exist !=-1){
 				yyerror("id already exist");
 			}else{
-				if($4 != $6->valueType){
+				if($4 != $7->valueType){
 					Trace("type different");
 				}
 				else //insert id
@@ -238,11 +248,11 @@ var_dec:	VAR ID//var a
 					Identifier* put = new Identidier;
 					put->idName = *$2;
 					put->idType = Var;
-					put->idValue = $6; 
+					put->idValue = $7; 
 					Trace("insert id var & type & value");
 					//global
 					if(table_index==0){
-						java<<"\tfield static int "<<*$2<<" = "<<$6->i_value<<endl;
+						java<<"\tfield static int "<<*$2<<endl;
 					}
 					else{
 						put->index = now_stack;
@@ -285,7 +295,7 @@ var_dec:	VAR ID//var a
 		;
 EXPR:		'(' EXPR ')'{
 			$$=$2;
-		}|EXPR '=' EXPR {
+		}/*|EXPR '=' EXPR {
 			Trace("EXPR = EXPR");
 			Value* put =new Value;
 			if($1->valueType==intType && $3->valueType==intType){
@@ -303,7 +313,7 @@ EXPR:		'(' EXPR ')'{
         		}else
 				{yyerror("assign type error");}
 			$$=put;
-		}|FUNC_INVOCATION {
+		}*/|FUNC_INVOCATION {
 			Trace("into call function");
 		}|EXPR '+' EXPR {
 			Trace("EXPR + EXPR");
@@ -473,7 +483,14 @@ EXPR:		'(' EXPR ')'{
 			}else
 				yyerror("< operator type error");
 			$$ =put;
-			java << "\t\tiflt" << endl;
+			java << "\t\tisub"<<endl; 
+			java << "\t\tiflt L" <<label_count<< endl;
+			java << "\t\ticonst_0"<< endl;
+			java << "\t\tgoto L"<<label_count+1<<endl;
+			java << "L"<<label_count<<":"<<endl;
+			java << "\t\ticonst_1"<<endl;
+			java << "L"<<label_count+1<<":"<<endl;
+			label_count+=2;
 		}|EXPR NOT_MORE EXPR{
 			Trace("EXPR <= EXPR");
 			Value* put = new Value;
@@ -493,7 +510,14 @@ EXPR:		'(' EXPR ')'{
 			}else
 				yyerror("<= operator type error");
 			$$ =put;
-			java << "\t\tifle" << endl;
+			java << "\t\tisub"<<endl;
+			java << "\t\tifle L"<<label_count << endl;
+			java << "\t\ticonst_0"<< endl;
+			java << "\t\tgoto L"<<label_count+1<<endl;
+			java << "L"<<label_count<<":"<<endl;
+			java << "\t\ticonst_1"<<endl;
+			java << "L"<<label_count+1<<":"<<endl;
+			label_count+=2;
 		}|EXPR MORE EXPR{
 			Trace("EXPR > EXPR");
 			Value* put = new Value;
@@ -513,7 +537,14 @@ EXPR:		'(' EXPR ')'{
 			}else
 				yyerror("> operator type error");
 			$$ =put;
-			java << "\t\tifgt" << endl;
+			java << "\t\tisub"<<endl;
+			java << "\t\tifgt L" <<label_count<< endl;
+			java << "\t\ticonst_0"<< endl;
+			java << "\t\tgoto L"<<label_count+1<<endl;
+			java << "L"<<label_count<<":"<<endl;
+			java << "\t\ticonst_1"<<endl;
+			java << "L"<<label_count+1<<":"<<endl;
+			label_count+=2;
 		}|EXPR NOT_LESS EXPR{
 			Trace("EXPR >= EXPR");
 			Value* put = new Value;
@@ -533,7 +564,14 @@ EXPR:		'(' EXPR ')'{
 			}else
 				yyerror(">= operator type error");
 			$$ =put;
-			java << "\t\tifge" << endl;
+			java << "\t\tisub"<<endl;
+			java << "\t\tifge L" <<label_count<< endl;
+			java << "\t\ticonst_0"<< endl;
+			java << "\t\tgoto L"<<label_count+1<<endl;
+			java << "L"<<label_count<<":"<<endl;
+			java << "\t\ticonst_1"<<endl;
+			java << "L"<<label_count+1<<":"<<endl;
+			label_count+=2;
 		}|EXPR EQUAL EXPR{
 			Trace("EXPR == EXPR");
 			Value* put = new Value;
@@ -558,7 +596,14 @@ EXPR:		'(' EXPR ')'{
 			}else
 				yyerror("== operator type error");
 			$$=put;
-			java << "\t\tifeq" << endl;
+			java << "\t\tisub"<<endl;
+			java << "\t\tifeq L"<<label_count << endl;
+			java << "\t\ticonst_0"<< endl;
+			java << "\t\tgoto L"<<label_count+1<<endl;
+			java << "L"<<label_count<<":"<<endl;
+			java << "\t\ticonst_1"<<endl;
+			java << "L"<<label_count+1<<":"<<endl;
+			label_count+=2;
 		}|EXPR NOT_EQUAL EXPR{
 			Trace("EXPR != EXPR");
 			Value* put = new Value;
@@ -584,7 +629,14 @@ EXPR:		'(' EXPR ')'{
 			}else
 				yyerror("!= operator type error");
 			$$=put;
-			java << "\t\tifne" << endl;
+			java << "\t\tisub"<<endl;
+			java << "\t\tifne L"<<label_count << endl;
+			java << "\t\ticonst_0"<< endl;
+			java << "\t\tgoto L"<<label_count+1<<endl;
+			java << "L"<<label_count<<":"<<endl;
+			java << "\t\ticonst_1"<<endl;
+			java << "L"<<label_count+1<<":"<<endl;
+			label_count+=2;
 		}|ID{
 			Trace("find a ID");
 			int exist = all_table.lookup_all(*$1);
@@ -748,6 +800,7 @@ methods :	methods method
 method	:	DEF ID {
 			has_return = false;
 			Trace("Method ID");
+			now_stack = 0;
 			int exist = all_table.table_list[table_index].lookup(*$2);
 			if(exist !=-1&&all_table.table_list[table_index].idList[exist]->idType==Function){
 				yyerror("method id already exist");
@@ -808,10 +861,11 @@ method	:	DEF ID {
 			Trace("done FUNC_BLOCK");
 			Identifier* put = $6;
 			put->idName = *$2;
+			put->idType = Function;
 			put->funType = $8;
 			cout<<put->numOfPara<<endl;
 			InsertSymbol(put,all_table.table_list[table_index]);
-			if((put->funType != valueTypeError )&& (!has_return)){
+			if((put->funType == valueTypeError )&& (!has_return)){
 				java<<"\t\treturn"<<endl;
 			}
 			java<<"\t}"<<endl;
@@ -911,6 +965,15 @@ FUNC_INVOCATION:	ID {
 							}
 							$$= put->idValue;
 							$$->valueType = put->funType;
+							java<<"\t\tinvokestatic "<<valueType2String(put->funType)<<" "<<objName<<"."<<*$1;
+							java<<"(";
+							for(int i =0;i<put->numOfPara;i++){
+								if(i!=put->numOfPara-1){
+									java<<valueType2String(put->parameters[i]->idValue->valueType)<<", ";
+								}else{
+									java<<valueType2String(put->parameters[i]->idValue->valueType)<<")"<<endl;
+								}
+							}
 						}
 					}
 				}
@@ -919,10 +982,12 @@ STATEMENTS:	STATEMENT STATEMENTS
 		|STATEMENT
 		|/*empty*/
 		;
+BLOCK_OR_SIMPLE: BLOCK|SIMPLE;
 STATEMENT:	SIMPLE
 		|CONDITION{Trace("exit Condition");}
 		|LOOP{Trace("into Loop");};
 BLOCK:		'{' {
+			Trace("123");
 			Trace("BLOCK start");
 			SymbolTable put = SymbolTable();
 			table_index++;
@@ -941,33 +1006,54 @@ IF_CONDITION:	IF '(' EXPR ')' {
 			if($3->valueType!=boolType){
 				yyerror("if condition expr must be bool");
 			}
+			java<<"\t\tifeq L"<<label_count<<endl;
+			else_label = label_count;
 		}SIMPLE{
 			Trace("if with simple");
+			java<<"\t\tgoto L"<<label_count+1<<endl;
+			label_count+=1;
 		}|IF '(' EXPR ')' {
 			Trace("IF condition");
 				if($3->valueType!=boolType){
 				yyerror("if condition expr must be bool");
 			}
+			java<<"\t\tifeq L"<<label_count<<endl;
+			else_label = label_count;
 		}BLOCK{
 			Trace("if with block");
+			java<<"\t\tgoto L"<<label_count+1<<endl;
+			label_count+=1;
 		};
-ELSE_CONDITION:	ELSE SIMPLE{
+ELSE_CONDITION:	ELSE {
+			java<<"L"<<else_label<<":"<<endl;
+		}SIMPLE{
 			Trace("else with simple");
-		}|ELSE BLOCK{
+			java<<"L"<<label_count<<":"<<endl;
+			label_count+=1;
+		}|ELSE {
+			java<<"L"<<else_label<<":"<<endl;
+		}BLOCK{
 			Trace("else with block");
+			java<<"L"<<label_count<<":"<<endl;
+			label_count+=1;
 		};
 LOOP: 		WHILE_LOOP|FOR_LOOP;
 
-WHILE_LOOP:	WHILE '(' EXPR ')' SIMPLE{
+WHILE_LOOP:	WHILE {
+			java<<"L"<<label_count<<":"<<endl;
+			begin_label = label_count;
+			label_count++;
+		}'(' EXPR ')' {
+			java<<"\t\tifeq L"<<label_count<<endl;
+			end_label = label_count;
+			label_count++;
+		}BLOCK_OR_SIMPLE {
 			Trace("while loop with simple");
-			if($3->valueType!=boolType){
+			if($4->valueType!=boolType){
 				yyerror("while loop expr must be bool");
 			}
-		}|WHILE '(' EXPR ')' BLOCK{
-			Trace("while loop with block");
-			if($3->valueType!=boolType){
-				yyerror("while loop expr must be bool");
-			}
+			java<<"\t\tgoto L"<<begin_label<<":"<<endl;
+			java<<"L"<<end_label<<":"<<endl;
 		};
 FOR_LOOP:	FOR '(' ID LESS '-' EXPR TO EXPR ')' SIMPLE{
 			Trace("for loop with simple");
@@ -1026,21 +1112,21 @@ SIMPLE: 	ID '=' EXPR{
 				
 			}
 		}|PRINT  {
-			java<<"getstatic java.io.PrintStream java.lan.System.out"<<endl;
+			java<<"\t\tgetstatic java.io.PrintStream java.lang.System.out"<<endl;
 		}EXPR {
 			if($3->valueType == stringType){
-				java<<"invokevirtual void java.io.PrintStream.print(java.lang.String)"<<endl;
+				java<<"\t\tinvokevirtual void java.io.PrintStream.print(java.lang.String)"<<endl;
 			}else{
-				java<<"invokevirtual void java.io.PrintStream.print("<<valueType2String($3->valueType)<<")"<<endl;
+				java<<"\t\tinvokevirtual void java.io.PrintStream.print("<<valueType2String($3->valueType)<<")"<<endl;
 			}
 			Trace("print expr");
 		}|PRINTLN {
-			java<<"getstatic java.io.PrintStream java.lan.System.out"<<endl;
+			java<<"\t\tgetstatic java.io.PrintStream java.lang.System.out"<<endl;
 		} EXPR {
 			if($3->valueType == stringType){
-				java<<"invokevirtual void java.io.PrintStream.println(java.lang.String)"<<endl;
+				java<<"\t\tinvokevirtual void java.io.PrintStream.println(java.lang.String)"<<endl;
 			}else{
-				java<<"invokevirtual void java.io.PrintStream.println("<<valueType2String($3->valueType)<<")"<<endl;
+				java<<"\t\tinvokevirtual void java.io.PrintStream.println("<<valueType2String($3->valueType)<<")"<<endl;
 			}
 			Trace("println expr");
 		}|READ ID{
@@ -1063,6 +1149,7 @@ program:        OBJECT ID
 			Identifier* put = new Identidier;
 			now_class = *$2;
 			put->idName = *$2;
+			objName = *$2;
 			put->idType = Object;
 			all_table.push();
 			InsertSymbol(put,all_table.table_list[table_index]);

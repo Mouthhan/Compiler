@@ -10,7 +10,6 @@ object example {
   {
     return a+b
   }
-  
   // main statements
   def main()
   {
@@ -19,6 +18,6 @@ object example {
       print -c
     else
       print c
-    println ("Hello World")
+    println ("Hello World!")
   }
 }
