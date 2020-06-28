@@ -1,0 +1,24 @@
+class example
+{
+	field static int a
+	field static int c
+	method public static int add(int,int)
+	max_stack 15
+	max_locals 15
+	{
+		sipush 5
+		istore 2
+		iload 0
+		sipush 10
+		iadd
+		istore 0
+		iload 0
+		sipush 10
+		isub
+		istore 1
+		iload 0
+		iload 1
+		iadd
+		iretrun
+	}
+}

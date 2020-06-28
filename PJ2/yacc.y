@@ -1,5 +1,6 @@
 %{
 #include <iostream>
+#include <fstream>
 #include <string>
 #include "math.h"
 #include "SymbolTable.hpp"
@@ -7,10 +8,16 @@
 
 using namespace std;
 #define Trace(t)        cout<<t<<endl;
+#define IsGLOBAL 0
 SymbolTables all_table = SymbolTables();//All SymbolTable
 int table_index = 0;
 void InsertSymbol(Identifier* n,SymbolTable &ST);
-
+ofstream java;
+string funcName = "";
+int now_stack = 0;
+string now_class = "";
+bool has_return = false;
+bool const_val = false;
 extern "C"
 {
 	void yyerror(const char *s);
@@ -18,8 +25,23 @@ extern "C"
 }
 void yyerror(string msg)
 {
-    cout << " (" << msg  << ')' << endl;
-   exit(-1);
+        cout << " (" << msg  << ')' << endl;
+        exit(-1);
+}
+//load
+void java_load(int index)
+{
+	java<<"\t\tiload "<<index<<endl;
+}
+//store
+void java_store(int index)
+{
+	java<<"\t\tistore "<<index<<endl;
+}
+//push
+void java_push(int i)
+{
+	java<<"\t\tsipush "<<i<<endl;
 }
 %}
 
@@ -53,7 +75,8 @@ void yyerror(string msg)
 %token <s_val> ID
 /* type  */
 %type <valueType> DATA_TYPE FUNC_TYPE
-%type <idType> ARGS ARG method methods 
+%type <idType> ARGS ARG methods 
+%type <idType> method
 %type <idType> FUNC_BLOCK
 %type <value> VALUE EXPR FUNC_INVOCATION
 /* precedence  */
@@ -76,31 +99,35 @@ declarations:	const_dec declarations
 		| /*empty*/;
 
 // val declaration
-const_dec:	VAL ID '=' EXPR //val a = 10
+const_dec:	VAL ID '='//val a = 10
 		{
+			const_val = true;
+		}EXPR{
 			Trace("VAL ID = EXPR");
 			int exist = all_table.table_list[table_index].lookup(*$2);
 			if(exist !=-1){
-				Trace("id already exist");
+				yyerror("id already exist");
 			}
 			else //insert id
 			{
 				Identifier* put = new Identidier;
 				put->idName = *$2;
 				put->idType = Const;
-				put->idValue = $4; 
+				put->idValue = $5; 
 				InsertSymbol(put,all_table.table_list[table_index]);
 				Trace("insert id val & value");
 			}
 		}|
-		VAL ID ':' DATA_TYPE '=' EXPR//val a:int = 10
+		VAL ID ':' DATA_TYPE '='//val a:int = 10
 		{
+			const_val = true;
+		}EXPR{
 			Trace("VAL ID :TYPE = EXPR");
 			int exist = all_table.table_list[table_index].lookup(*$2);
 			if(exist !=-1){
 				Trace("id already exist");
 			}
-			if($4 != $6->valueType){
+			if($4 != $7->valueType){
 				Trace("type different");
 			}
 			else //insert id
@@ -108,7 +135,7 @@ const_dec:	VAL ID '=' EXPR //val a = 10
 				Identifier* put = new Identidier;
 				put->idName = *$2;
 				put->idType = Const;
-				put->idValue = $6; 
+				put->idValue = $7; 
 				InsertSymbol(put,all_table.table_list[table_index]);
 				Trace("insert id val & type & value");
 			}
@@ -119,15 +146,26 @@ var_dec:	VAR ID//var a
 			Trace("VAR ID");
 			int exist = all_table.table_list[table_index].lookup(*$2);
 			if(exist !=-1){
-				Trace("id already exist");
+				yyerror("id already exist");
 			}
 			else //insert id
 			{
+				int check = all_table.lookup_all(*$2);
 				Identifier* put = new Identidier;
 				put->idName = *$2;
 				put->idType = Var; 
-				InsertSymbol(put,all_table.table_list[table_index]);
 				Trace("insert id var");
+				//global
+				//cout<<"check:"<<check<<endl;
+				if(table_index==0){
+					java<<"\tfield static int "<<*$2<<endl;
+				}
+				else{
+					java_push(0);
+					put->index = now_stack;
+					java_store(now_stack++);
+				}
+				InsertSymbol(put,all_table.table_list[table_index]);
 			}
 		}|
 		VAR ID ':' DATA_TYPE//var a:int
@@ -135,17 +173,27 @@ var_dec:	VAR ID//var a
 			Trace("VAR ID:TYPE");
 			int exist = all_table.table_list[table_index].lookup(*$2);
 			if(exist !=-1){
-				Trace("id already exist");
+				yyerror("id already exist");
 			}
 			else //insert id
 			{
+				int check = all_table.lookup_all(*$2);
 				Identifier* put = new Identidier;
 				put->idName = *$2;
 				put->idType = Var; 
 				put->idValue = new Value;
 				put->idValue->valueType = $4;
-				InsertSymbol(put,all_table.table_list[table_index]);
 				Trace("insert id var & type");
+				//global
+				if(table_index==0){
+					java<<"\tfield static int "<<*$2<<endl;
+				}
+				else{
+					java_push(0);
+					put->index = now_stack;
+					java_store(now_stack++);
+				}
+				InsertSymbol(put,all_table.table_list[table_index]);
 			}
 		}|
 		VAR ID '=' EXPR//var a = 3
@@ -153,16 +201,25 @@ var_dec:	VAR ID//var a
 			Trace("VAR ID=EXPR");
 			int exist = all_table.table_list[table_index].lookup(*$2);
 			if(exist !=-1){
-				Trace("id already exist");
+				yyerror("id already exist");
 			}
 			else //insert id
 			{
+				int check = all_table.lookup_all(*$2);
 				Identifier* put = new Identidier;
 				put->idName = *$2;
 				put->idType = Var; 
 				put->idValue = $4;
-				InsertSymbol(put,all_table.table_list[table_index]);
 				Trace("insert id va & value");
+				//global
+				if(table_index==0){
+					java<<"\tfield static int "<<*$2<<" = "<<$4->i_value<<endl;
+				}
+				else{
+					put->index = now_stack;
+					java_store(now_stack++);
+				}
+				InsertSymbol(put,all_table.table_list[table_index]);
 			}
 		}|
 		VAR ID ':' DATA_TYPE '=' EXPR//var a:int = 3
@@ -170,19 +227,28 @@ var_dec:	VAR ID//var a
 			Trace("VAL ID :TYPE = EXPR");
 			int exist = all_table.table_list[table_index].lookup(*$2);
 			if(exist !=-1){
-				Trace("id already exist");
+				yyerror("id already exist");
 			}else{
 				if($4 != $6->valueType){
 					Trace("type different");
 				}
 				else //insert id
 				{
+					int check = all_table.lookup_all(*$2);
 					Identifier* put = new Identidier;
 					put->idName = *$2;
 					put->idType = Var;
 					put->idValue = $6; 
-					InsertSymbol(put,all_table.table_list[table_index]);
 					Trace("insert id var & type & value");
+					//global
+					if(table_index==0){
+						java<<"\tfield static int "<<*$2<<" = "<<$6->i_value<<endl;
+					}
+					else{
+						put->index = now_stack;
+						java_store(now_stack++);
+					}
+					InsertSymbol(put,all_table.table_list[table_index]);
 				}
 			}
 		}|
@@ -257,6 +323,7 @@ EXPR:		'(' EXPR ')'{
         		}else
 				{yyerror("add type error");}
 			$$=put;
+			java << "\t\tiadd" << endl;
 		}|EXPR '-' EXPR {
 			Trace("EXPR - EXPR");
 			Value* put =new Value;
@@ -276,6 +343,7 @@ EXPR:		'(' EXPR ')'{
 				yyerror("minus type error");
 			}
 			$$=put;
+			java << "\t\tisub" << endl;
 		}|EXPR '*' EXPR {
 			Trace("EXPR * EXPR");
 			Value* put =new Value;
@@ -295,6 +363,7 @@ EXPR:		'(' EXPR ')'{
 				yyerror("product type error");
 			}
 			$$=put;
+			java << "\t\timul" << endl;
 		}|EXPR '/' EXPR {
 			Trace("EXPR / EXPR");
 			Value* put =new Value;
@@ -314,6 +383,7 @@ EXPR:		'(' EXPR ')'{
 				yyerror("divide type error");
 			}
 			$$=put;
+			java << "\t\tidiv" << endl;
 		}|EXPR '%' EXPR {
 			Trace("EXPR mod EXPR");
 			Value* put =new Value;
@@ -346,7 +416,8 @@ EXPR:		'(' EXPR ')'{
         		else{
         		    yyerror("- EXPR type error");
         		}
-        		$$ = put;	
+        		$$ = put;
+			java << "\t\tineg" << endl;	
 		}|EXPR OR EXPR{
 			Trace("EXPR OR EXPR");
         		Value* put = new Value;
@@ -358,6 +429,7 @@ EXPR:		'(' EXPR ')'{
          		  put->b_value = $1->b_value || $3->b_value;
         		}
         		$$ = put;
+			java << "\t\tior" << endl;
 		}|EXPR AND EXPR{
 			Trace("EXPR AND EXPR");
         		Value* put = new Value;
@@ -369,6 +441,7 @@ EXPR:		'(' EXPR ')'{
          		  put->b_value = $1->b_value && $3->b_value;
         		}
         		$$ = put;
+			java << "\t\tiand" << endl;
 		}|'!' EXPR{
 			Trace("NOT EXPR");
         		Value* put = new Value;
@@ -380,6 +453,7 @@ EXPR:		'(' EXPR ')'{
          		  put->b_value = !($2->b_value);
         		}
         		$$ = put;
+			java << "\t\tldc 1" << endl << "\t\tixor" << endl;
 		}|EXPR LESS EXPR{
 			Trace("EXPR < EXPR");
 			Value* put = new Value;
@@ -399,6 +473,7 @@ EXPR:		'(' EXPR ')'{
 			}else
 				yyerror("< operator type error");
 			$$ =put;
+			java << "\t\tiflt" << endl;
 		}|EXPR NOT_MORE EXPR{
 			Trace("EXPR <= EXPR");
 			Value* put = new Value;
@@ -418,6 +493,7 @@ EXPR:		'(' EXPR ')'{
 			}else
 				yyerror("<= operator type error");
 			$$ =put;
+			java << "\t\tifle" << endl;
 		}|EXPR MORE EXPR{
 			Trace("EXPR > EXPR");
 			Value* put = new Value;
@@ -437,6 +513,7 @@ EXPR:		'(' EXPR ')'{
 			}else
 				yyerror("> operator type error");
 			$$ =put;
+			java << "\t\tifgt" << endl;
 		}|EXPR NOT_LESS EXPR{
 			Trace("EXPR >= EXPR");
 			Value* put = new Value;
@@ -456,6 +533,7 @@ EXPR:		'(' EXPR ')'{
 			}else
 				yyerror(">= operator type error");
 			$$ =put;
+			java << "\t\tifge" << endl;
 		}|EXPR EQUAL EXPR{
 			Trace("EXPR == EXPR");
 			Value* put = new Value;
@@ -480,6 +558,7 @@ EXPR:		'(' EXPR ')'{
 			}else
 				yyerror("== operator type error");
 			$$=put;
+			java << "\t\tifeq" << endl;
 		}|EXPR NOT_EQUAL EXPR{
 			Trace("EXPR != EXPR");
 			Value* put = new Value;
@@ -505,6 +584,7 @@ EXPR:		'(' EXPR ')'{
 			}else
 				yyerror("!= operator type error");
 			$$=put;
+			java << "\t\tifne" << endl;
 		}|ID{
 			Trace("find a ID");
 			int exist = all_table.lookup_all(*$1);
@@ -518,9 +598,6 @@ EXPR:		'(' EXPR ')'{
 				if(put->idType == Array)
 				{
 					yyerror("expr assign id type is Array");
-				}else if(put->idType == Function)
-				{
-					yyerror("expr assign id type is Function");
 				}else if(put->idType == Object)
 				{
 					yyerror("expr assign id type is Object");
@@ -528,6 +605,22 @@ EXPR:		'(' EXPR ')'{
 				{
 					$$=put->idValue;
 					Trace("assign id value to expr");
+				}
+				if(exist==IsGLOBAL){
+					if(put->idType == Const){
+						if(put->idValue->valueType == intType)
+							{java_push(put->idValue->i_value);}
+						else if(put->idValue->valueType == boolType){
+							if(put->idValue->b_value){
+								java<<"\t\ticonst_1"<<endl;
+							}
+							else{java<<"\t\ticonst_0"<<endl;}
+						}
+					}else if(put->idType == Var){
+						java << "\t\tgetstatic int " << now_class << "." << *$1 << endl;
+					}
+				}else{
+					java_load(put->index);
 				}
 			}
 		}|ID '[' INT_VALUE ']'{
@@ -584,17 +677,31 @@ EXPR:		'(' EXPR ')'{
 				}
 			}
 		}
-		|VALUE{$$=$1;}
+		|VALUE{
+			$$=$1;
+		}
 		;
 
 //number const
 VALUE:		INT_VALUE {
 				Trace("find a int value");
 				$$ = intValue($1);
+				if(!const_val){
+					java_push($1);
+				}
+				const_val = false;
 			}
 		|BOOL_VALUE {
 				Trace("find a bool value");
 				$$ = boolValue($1);
+				if(!const_val){
+					if($1){
+						java<<"\t\ticonst_1"<<endl;
+					}else{
+						java<<"\t\ticonst_0"<<endl;
+					}	
+				}
+				const_val = false;
 			}
 		|FLOAT_VALUE {
 				Trace("find a float value");
@@ -603,7 +710,11 @@ VALUE:		INT_VALUE {
 		|STRING_VALUE {
 				Trace("find a string value");
 				$$ = stringValue($1);
-			}
+				if(!const_val){
+					java << "\t\tldc " << "\"" << *$1 << "\"" << endl;
+				}
+				const_val = false;
+			}	
 		|CHAR_VALUE  {
 				Trace("find a char value");
 				$$ = charValue($1);
@@ -613,7 +724,7 @@ VALUE:		INT_VALUE {
 FUNC_TYPE:	':' DATA_TYPE{
 			Trace("function has return type");
 			$$ = $2;
-		}|/*empty*/;
+		}|{$$ = valueTypeError;}/*empty*/;
 DATA_TYPE:	CHAR {
            	 	$$ = charType;
        	  	}
@@ -635,29 +746,79 @@ zero_or_more_state: 	STATEMENTS
 methods :	methods method
 		|method;
 method	:	DEF ID {
+			has_return = false;
 			Trace("Method ID");
 			int exist = all_table.table_list[table_index].lookup(*$2);
 			if(exist !=-1&&all_table.table_list[table_index].idList[exist]->idType==Function){
-				Trace("method id already exist");
+				yyerror("method id already exist");
 			}
-		} FUNC_BLOCK {
-			Trace("done FUNC_BLOCK");
-			Identifier* put = $4;
-			put->idName = *$2;
-			put->idType = Function;
-			InsertSymbol(put,all_table.table_list[table_index]);
-		};
-
-FUNC_BLOCK:	'(' {
+			else{
+				java<<"\tmethod public static ";
+				funcName = *$2;
+			}
+		} '(' {
 			Trace("FUNC_BLOCK start");
 			SymbolTable put = SymbolTable();
 			table_index++;
 			all_table.push();
-		} ARGS ')' FUNC_TYPE '{' declarations zero_or_more_state '}'{
-			//cout<<"$3="<<$3<<endl;
-			$$=$3;
-			Trace("FUNC_BLOCK end");
-			
+		} ARGS ')' FUNC_TYPE	{
+			$<idType>$ = $6;
+			$<idType>$->funType = $8;
+			Trace("before FUNC_BLOCK");
+			if($<idType>$->funType == valueTypeError){
+				java<<"void ";
+			}else{
+				//cout<<$<idType>$->funType<<endl;
+				java<<valueType2String($<idType>$->funType)<<" ";
+			}
+			//name
+			java<<funcName;
+			//no args
+			if($<idType>$->numOfPara == 0){
+				java<<"(java.lang.String[])"<<endl;
+				java<<"\tmax_stack 15"<<endl;
+				java<<"\tmax_locals 15"<<endl;
+			}else{
+				//print args
+				java<<"(";
+				for(int i = 0;i<$<idType>$->numOfPara;i++){
+					if(i==$<idType>$->numOfPara-1){
+						java<<valueType2String($<idType>$->parameters[i]->idValue->valueType)<<")"<<endl;
+					}else{
+						java<<valueType2String($<idType>$->parameters[i]->idValue->valueType)<<",";
+					}
+				}
+				java<<"\tmax_stack 15"<<endl;
+				java<<"\tmax_locals 15"<<endl;
+			}
+			java<<"\t{"<<endl;
+			/*cout<<$6->numOfPara<<endl;
+			cout<<$6->parameters[0]->idName<<endl;
+			cout<<$6->parameters[1]->idName<<endl;
+			for(int i=0;i<$6->numOfPara;i++){
+				int check = all_table.lookup_all($6->parameters[i]->idName);
+				if(check == IsGLOBAL){
+            				java << "\t\tgetstatic int " <<funcName<<"." <<$6->parameters[i]->idName <<  endl;
+       				}
+       				else{
+           				java_load($6->parameters[i]->index);
+        			}
+			}*/
+		}	FUNC_BLOCK{	
+			Trace("done FUNC_BLOCK");
+			Identifier* put = $6;
+			put->idName = *$2;
+			put->funType = $8;
+			cout<<put->numOfPara<<endl;
+			InsertSymbol(put,all_table.table_list[table_index]);
+			if((put->funType != valueTypeError )&& (!has_return)){
+				java<<"\t\treturn"<<endl;
+			}
+			java<<"\t}"<<endl;
+			Trace("insert ok");
+		};
+
+FUNC_BLOCK:	'{' declarations zero_or_more_state '}'{
 			all_table.table_list[table_index].dump();
 			all_table.pop();
 			table_index--;
@@ -678,16 +839,29 @@ ARGS:		ARG{
 			Identifier* put =new Identifier;
 			put->idType = Function;
 			$$ = put;
+			cout<<$$->idType<<endl;
 		};
 ARG:		ID ':' DATA_TYPE{
-			Identifier* put = new Identifier;
-			put->idName = *$1;
-			put->idValue = new Value;
-			put->idType = Var;
-			put->idValue->valueType = $3;
-			InsertSymbol(put,all_table.table_list[table_index]);
-			Trace("insert id(argument)");
-			$$=put;
+			int exist = all_table.table_list[table_index].lookup(*$1);
+			if(exist != -1){
+				yyerror("id already exist");
+			}else{
+				Identifier* put = new Identifier;
+				put->idName = *$1;
+				put->idValue = new Value;
+				put->idType = Var;
+				put->idValue->valueType = $3;
+				if(exist == IsGLOBAL){
+            				
+       				}
+       				else{
+            				put->index = now_stack;
+					now_stack++;
+        			}
+				Trace("insert id(argument)");
+				InsertSymbol(put,all_table.table_list[table_index]);
+				$$=put;
+			}
 		}|ID{
 			Trace("arg = id");
 			int exist = all_table.lookup_all(*$1);
@@ -735,8 +909,8 @@ FUNC_INVOCATION:	ID {
 									yyerror("argument type error");
 								}
 							}
-							
 							$$= put->idValue;
+							$$->valueType = put->funType;
 						}
 					}
 				}
@@ -764,10 +938,16 @@ CONDITION: 	IF_CONDITION
 
 IF_CONDITION:	IF '(' EXPR ')' {
 			Trace("IF condition");
+			if($3->valueType!=boolType){
+				yyerror("if condition expr must be bool");
+			}
 		}SIMPLE{
 			Trace("if with simple");
 		}|IF '(' EXPR ')' {
 			Trace("IF condition");
+				if($3->valueType!=boolType){
+				yyerror("if condition expr must be bool");
+			}
 		}BLOCK{
 			Trace("if with block");
 		};
@@ -780,8 +960,14 @@ LOOP: 		WHILE_LOOP|FOR_LOOP;
 
 WHILE_LOOP:	WHILE '(' EXPR ')' SIMPLE{
 			Trace("while loop with simple");
+			if($3->valueType!=boolType){
+				yyerror("while loop expr must be bool");
+			}
 		}|WHILE '(' EXPR ')' BLOCK{
 			Trace("while loop with block");
+			if($3->valueType!=boolType){
+				yyerror("while loop expr must be bool");
+			}
 		};
 FOR_LOOP:	FOR '(' ID LESS '-' EXPR TO EXPR ')' SIMPLE{
 			Trace("for loop with simple");
@@ -812,7 +998,11 @@ SIMPLE: 	ID '=' EXPR{
 					put->idValue=$3;
 					Trace("assign id done");
 				}
-				
+				if(exist==IsGLOBAL){
+					java<<"\t\tputstatic "<<valueType2String(put->idValue->valueType)<<" "<<now_class<<"."<<*$1<<endl;
+				}else{
+					java_store(put->index);
+				}
 			}
 		}|ID '[' EXPR ']' '=' EXPR{
 			Trace("assign expr to id array's value");
@@ -835,17 +1025,35 @@ SIMPLE: 	ID '=' EXPR{
 				}
 				
 			}
-		}|PRINT  EXPR {
+		}|PRINT  {
+			java<<"getstatic java.io.PrintStream java.lan.System.out"<<endl;
+		}EXPR {
+			if($3->valueType == stringType){
+				java<<"invokevirtual void java.io.PrintStream.print(java.lang.String)"<<endl;
+			}else{
+				java<<"invokevirtual void java.io.PrintStream.print("<<valueType2String($3->valueType)<<")"<<endl;
+			}
 			Trace("print expr");
-		}|PRINTLN  EXPR {
+		}|PRINTLN {
+			java<<"getstatic java.io.PrintStream java.lan.System.out"<<endl;
+		} EXPR {
+			if($3->valueType == stringType){
+				java<<"invokevirtual void java.io.PrintStream.println(java.lang.String)"<<endl;
+			}else{
+				java<<"invokevirtual void java.io.PrintStream.println("<<valueType2String($3->valueType)<<")"<<endl;
+			}
 			Trace("println expr");
 		}|READ ID{
 			Trace("read id");
 		}|RETURN{
 			Trace("return");
+			java<<"\t\tretrun"<<endl;
+			has_return = true;
 			//return new Value;
 		}|RETURN EXPR{
 			Trace("return expr");
+			java<<"\t\tiretrun"<<endl;
+			has_return = true;
 			//return $2;
 		};
 comma_sep_EXPR:;
@@ -853,14 +1061,21 @@ program:        OBJECT ID
                 { 
 			Trace("program start");
 			Identifier* put = new Identidier;
+			now_class = *$2;
 			put->idName = *$2;
 			put->idType = Object;
 			all_table.push();
 			InsertSymbol(put,all_table.table_list[table_index]);
+			java<<"class "<<*$2<<endl;
+			java<<"{"<<endl;
 			
                 }'{' declarations methods '}'
 		{
+			if(all_table.lookup_all("main")==-1){
+				yyerror("must have main");
+			}
 			Trace("program end");
+			java<<"}"<<endl;
 			all_table.dump();
 			all_table.pop();
                 };
@@ -880,11 +1095,20 @@ void InsertSymbol(Identifier* n,SymbolTable &ST)
 int main(int argc, char *argv[])
 {
     // have a file or not
-    if(argc > 1)
+    if(argc > 1){
         yyin = fopen(argv[1], "r");
-    else
+	string output = argv[1];
+	output += ".jasm";
+	java.open(output,ios::out);
+    }
+    else{
         yyin = stdin;
-
+    }
+    if(!java){
+	cout<<"open error"<<endl;
+	exit(1);
+    }
+	
     if(yyparse() == 1)
 		yyerror("parsing error");
 

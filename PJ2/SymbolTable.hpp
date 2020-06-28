@@ -38,17 +38,17 @@ string valueType2String(int valueType)
     switch (valueType)
     {
     case 0:
-        return "Int";
+        return "int";
     case 1:
-        return "Float";
+        return "float";
     case 2:
-        return "Bool";
+        return "boolean";
     case 3:
-        return "Char";
+        return "char";
     case 4:
-        return "String";
+        return "string";
     case 5:
-        return "Error";
+        return "error";
     default:
         return ("cant find valuetype");
     }
@@ -76,7 +76,7 @@ enum IDType
 
 
 typedef struct Identifier {
-	int index;
+	int index=-1;//stack
 	int idType = idTypeError;
 	string idName = "";
 	Value* idValue= new Value;
@@ -84,8 +84,8 @@ typedef struct Identifier {
 	int arraySize =0;
 	int arrayValueType = valueTypeError;
 	//for function
-	int funType = idTypeError;
-	int numOfPara=0;;
+	int funType = valueTypeError;
+	int numOfPara=0;
 	vector<Identifier*> parameters;
 }Identidier;
 
